@@ -1,0 +1,135 @@
+name: CI/CD
+
+run-name: ${{ github.actor }} is running CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  #  dependency-audit:
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/checkout@v4
+  #      - run: npm audit --audit-level=high
+  #
+  #  codeql-analysis:
+  #    runs-on: ubuntu-latest
+  #    permissions:
+  #      actions: read
+  #      contents: read
+  #      security-events: write
+  #    steps:
+  #      - name: Checkout repository
+  #        uses: actions/checkout@v4
+  #      - name: Initialize CodeQL
+  #        uses: github/codeql-action/init@v2
+  #      - name: Perform CodeQL Analysis
+  #        uses: github/codeql-action/analyze@v2
+  #
+  #
+  #  build:
+  #    needs: codeql-analysis
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/checkout@v4
+  #      - name: Create .env file
+  #        run: |
+  #          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+  #          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+  #          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+  #          echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> .env
+  #
+  #      - name: Build and Start Containers
+  #        run: docker compose up -d --build
+
+  test:
+    #    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Compose
+        run: |
+          echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
+      - run: docker compose up -d --build
+      - run: sleep 10  
+      - run: docker compose logs express
+      - run: docker compose exec express npm run test
+
+
+  deploy-prod:
+    needs: test
+    environment:
+      name: production
+      url: http://54.37.40.147
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/node_express
+
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-dev:
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+      url: http://54.37.40.147
+    if: github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/node_express
+
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

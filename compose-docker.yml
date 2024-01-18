@@ -1,0 +1,39 @@
+services:
+  express:
+    depends_on: [ mariadb ]
+    build:
+      context: .
+      target: production
+    environment:
+      NODE_ENV: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ".:/app"
+    env_file:
+      - .env
+    command: [ "npm", "run", "start" ]
+
+  mariadb:
+    image: mariadb:11.2.2
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - "./docker/mariadb/data:/var/lib/mysql"
+    ports:
+      - "3306:3306"
+
+
+  adminer:
+    image: adminer:4.8.1-standalone
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
+    depends_on:
+      - mariadb

@@ -1,0 +1,25 @@
+services:
+  node:
+    image: ghcr.io/alexispet/final-test-Ismail-Mouyahada/node_express:develop
+    ports:
+      - "3001:3001"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: development
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+
+
+  mariadb:
+    image: mariadb:11.2.2
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
