@@ -60,7 +60,7 @@ jobs:
           echo "DB_USER=${{ secrets.DB_USER }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
           echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-      - run: docker -v
+      - run: docker compose -v
       - run: docker compose up -d --build
       - run: sleep 10  
       - run: docker compose logs express
